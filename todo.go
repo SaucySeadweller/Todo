@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -29,22 +30,26 @@ func (l *List) list() string {
 	}
 	return s
 }
-func (l *List) delete(id int) {
+func (l *List) delete(id int) error {
 	for i, t := range l.Task {
 		if t.Num == id {
 			l.Task = append(l.Task[:i], l.Task[i+1:]...)
-			return
+			return nil
 		}
+
 	}
+	return fmt.Errorf("ID does not exist")
 }
 
-func (l *List) done(id int) {
+func (l *List) done(id int) error {
 	for i, t := range l.Task {
 		if t.Num == id {
 			l.Task[i].Done = true
-			break
+			return nil
+
 		}
 	}
+	return fmt.Errorf("No task found with ID[%v],use a valid ID ", id)
 }
 func (l *List) add(s string) {
 	max := 0
@@ -58,45 +63,64 @@ func (l *List) add(s string) {
 func main() {
 	l := List{}
 	l.load()
+
 	switch os.Args[1] {
-	case "add", "a":
+
+	default:
+		log.Fatalln("Invalid command, todo H for for a list of commands")
+	case "Add", "add", "A", "a":
 		l.add(strings.Join(os.Args[2:], " "))
-	case "remove", "r":
+
+	case "Remove", "remove", "R", "r":
 		id, err := strconv.Atoi(os.Args[2])
 		if err != nil {
-			panic(err)
+			log.Fatalf("Invalid ID [%v],Input an ID from the list to remove", os.Args[2])
 		}
-		l.delete(id)
-	case "done", "d":
+		err = l.delete(id)
+		if err != nil {
+			fmt.Println("ID does not exist")
+		}
+
+	case "Done", "done", "D", "d":
 		id, err := strconv.Atoi(os.Args[2])
 		if err != nil {
-			panic(err)
+			log.Fatalf("ID [%v] invalid,use valid ID ", os.Args[2])
 		}
-		l.done(id)
-	case "list", "l":
+		err = l.done(id)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	case "List", "list", "L", "l":
 		fmt.Print(l.list())
+
+	case "Help", "help", "H", "h":
+		fmt.Println("todo L: prints the todo-list")
+		fmt.Println("todo D [ID]: marks selected ID as done")
+		fmt.Println("todo R [ID]: removes selected ID")
+		fmt.Println("todo A [UserInput]: adds task to the list")
 	}
 	l.save()
 }
+
 func (l *List) save() {
 	data, err := json.Marshal(l)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Failed to save")
 	}
 	err = ioutil.WriteFile("todo.json", data, 0644)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Failed to write.")
 	}
 }
 func (l *List) load() {
 	dat, err := ioutil.ReadFile("todo.json")
 	if err != nil {
+		log.Fatalln("Failed to load.")
 
-		return
 	}
 	err = json.Unmarshal(dat, l)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Failed to unmartial.")
 	}
 
 }

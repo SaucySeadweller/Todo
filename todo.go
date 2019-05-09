@@ -1,4 +1,4 @@
-package main
+package Todo
 
 import (
 	"encoding/json"
@@ -10,16 +10,16 @@ import (
 	"strings"
 )
 
-type List struct {
-	Task []todo
+type TodoList struct {
+	Task []Todo
 }
-type todo struct {
+type Todo struct {
 	Content string
 	Done    bool
 	Num     int
 }
 
-func (l *List) list() string {
+func (l *TodoList) List() string {
 	s := ""
 	for _, t := range l.Task {
 		if t.Done {
@@ -30,7 +30,7 @@ func (l *List) list() string {
 	}
 	return s
 }
-func (l *List) delete(id int) error {
+func (l *TodoList) Delete(id int) error {
 	for i, t := range l.Task {
 		if t.Num == id {
 			l.Task = append(l.Task[:i], l.Task[i+1:]...)
@@ -41,7 +41,7 @@ func (l *List) delete(id int) error {
 	return fmt.Errorf("ID does not exist")
 }
 
-func (l *List) done(id int) error {
+func (l *TodoList) Done(id int) error {
 	for i, t := range l.Task {
 		if t.Num == id {
 			l.Task[i].Done = true
@@ -51,32 +51,37 @@ func (l *List) done(id int) error {
 	}
 	return fmt.Errorf("No task found with ID[%v],use a valid ID ", id)
 }
-func (l *List) add(s string) {
+func (l *TodoList) Add(s string) {
 	max := 0
 	for _, t := range l.Task {
 		if t.Num > max {
 			max = t.Num
 		}
 	}
-	l.Task = append(l.Task, todo{Content: s, Num: max + 1})
+	l.Task = append(l.Task, Todo{Content: s, Num: max + 1})
 }
 func main() {
-	l := List{}
-	l.load()
+	l := TodoList{}
+	l.Load()
+	if len(os.Args) == 2 {
+		fmt.Println("")
+	}
 
 	switch os.Args[1] {
 
 	default:
 		log.Fatalln("Invalid command, todo H for for a list of commands")
+	case "todo":
+		log.Fatalf("nope")
 	case "Add", "add", "A", "a":
-		l.add(strings.Join(os.Args[2:], " "))
+		l.Add(strings.Join(os.Args[2:], " "))
 
 	case "Remove", "remove", "R", "r":
 		id, err := strconv.Atoi(os.Args[2])
 		if err != nil {
 			log.Fatalf("Invalid ID [%v],Input an ID from the list to remove", os.Args[2])
 		}
-		err = l.delete(id)
+		err = l.Delete(id)
 		if err != nil {
 			fmt.Println("ID does not exist")
 		}
@@ -86,23 +91,23 @@ func main() {
 		if err != nil {
 			log.Fatalf("ID [%v] invalid,use valid ID ", os.Args[2])
 		}
-		err = l.done(id)
+		err = l.Done(id)
 		if err != nil {
 			log.Fatalln(err)
 		}
 	case "List", "list", "L", "l":
-		fmt.Print(l.list())
+		fmt.Print(l.List())
 
-	case "Help", "help", "H", "h":
+	case "Help", "help", "H", "h,":
 		fmt.Println("todo L: prints the todo-list")
 		fmt.Println("todo D [ID]: marks selected ID as done")
 		fmt.Println("todo R [ID]: removes selected ID")
 		fmt.Println("todo A [UserInput]: adds task to the list")
 	}
-	l.save()
+	l.Save()
 }
 
-func (l *List) save() {
+func (l *TodoList) Save() {
 	data, err := json.Marshal(l)
 	if err != nil {
 		log.Fatalln("Failed to save")
@@ -112,7 +117,7 @@ func (l *List) save() {
 		log.Fatalln("Failed to write.")
 	}
 }
-func (l *List) load() {
+func (l *TodoList) Load() {
 	dat, err := ioutil.ReadFile("todo.json")
 	if err != nil {
 		log.Fatalln("Failed to load.")
